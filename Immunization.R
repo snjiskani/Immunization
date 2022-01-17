@@ -5,7 +5,6 @@ library(openxlsx) # to write to excel file
 library(dplyr)
 library(tidyverse)
 library(tidyr)
-library("gridExtra")
 library(ggplot2)
 library(lubridate)
 library(DT)
