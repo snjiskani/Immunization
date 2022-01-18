@@ -5,6 +5,7 @@ library(openxlsx) # to write to excel file
 library(dplyr)
 library(tidyverse)
 library(tidyr)
+library("gridExtra")
 library(ggplot2)
 library(lubridate)
 library(DT)
@@ -14,17 +15,18 @@ library(shinydashboardPlus)
 library(plotly)
 
 
-datafile<- "C:/Users/jiskanis/Desktop/Datasets/RI Admin Data.xlsx"
+#datafile<- "C:/Users/jiskanis/Desktop/Datasets/RI Admin Data.xlsx"
 
 
-setwd("C:/Users/jiskanis/Desktop/Data Science/R Programming/Shiny/Immunization2")
-
-
-
+#setwd("C:/Users/jiskanis/Desktop/Data Science/R Programming/Shiny/Immunization2")
 
 
 
-RI <- as.data.frame(read.xlsx(datafile))
+
+
+
+RI <- as.data.frame(read.xlsx("RI Admin Data.xlsx"))
+#RI$Year <- as.factor(RI$Year)
 options (scipen = 999)
 
 
@@ -40,8 +42,19 @@ RI$coverage <- ifelse(is.na(RI$coverage) & RI$antigen=="BCG", round(RI$children/
 ### Summary/Aggregated Tables
 ## District Annual
 
+district_m <- RI %>% 
+  group_by(Province, District, Year, Month, antigen) %>% 
+  summarise(
+    LB = sum(LB, na.rm = TRUE),
+    SI = sum(SI, na.rm = TRUE),
+    children = sum(children, na.rm = TRUE)
+  )
+district_m$coverage = NA
+district_m$coverage <- ifelse(is.na(district_m$coverage) & district_m$antigen=="BCG", round(district_m$children/district_m$LB*100,1) , round(district_m$children/district_m$SI*100,1)) 
+
+## Month
 district_a <- RI %>% 
-  group_by(Province, District, Year,  antigen) %>% 
+  group_by(Province, District, Year, antigen) %>% 
   summarise(
     LB = sum(LB, na.rm = TRUE),
     SI = sum(SI, na.rm = TRUE),
@@ -219,7 +232,7 @@ body <- dashboardBody(
                                 fluidRow(
                                   box(title = "Boxplot (Monthly admin data)", solidHeader = TRUE, width = 12,
                                           #plotlOutput("boxplot_d", height = 100)
-                                      plotlyOutput("boxplot_d", height = 100)
+                                      plotlyOutput("boxplot_d", height = 200)
                                       )
                                 ), # End of Row 2
                                 fluidRow(
@@ -317,10 +330,11 @@ server <- function(input, output) {
   
   ## Boxplot with plotly
   output$boxplot_d <- renderPlotly(
-    district_a %>%
+    district_m %>%
       drop_na(children) %>%
       filter(District == input$district_name & antigen==input$antigen_name_d & children>0) %>%
-      plot_ly(x = ~children, type = "box", notched=TRUE) 
+      plot_ly(x = ~children, type = "box", notched=TRUE, name = " ", text = ~paste(Month, ',', Year)
+              )
   )
   
 
@@ -375,7 +389,7 @@ server <- function(input, output) {
     plot_ly() %>%
     add_trace(x = ~Year, y = ~children,type = "bar",  name = "No of children vaccinated") %>%  
     add_trace(x = ~Year, y = ~coverage, mode = "lines", yaxis = "y2", name = "Coverage(%)") %>%
-    layout(yaxis2 = list(overlaying = "y", side = "right"))
+    layout(yaxis2 = list(overlaying = "y", side = "top"), legend = list(orientation = 'h'))
   )
   
   
